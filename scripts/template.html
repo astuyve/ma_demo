@@ -1,0 +1,498 @@
+<title>Massachusetts Age Atlas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: an atlas plate. Map on the left with its key; the selected place's age curve on the right. Stacks on phones. */
+:root {
+  --bg: #f4f6f8;
+  --surface: #fdfdfc;
+  --ink: #12171d;
+  --ink-2: #4a5360;
+  --ink-3: #6f7884;
+  --rule: #dde2e8;
+  --sel: #eb6834;
+  --sel-fill: rgba(235, 104, 52, .16);
+  --base: #4a5360;
+  --ramp-0: #cde2fb; --ramp-1: #9ec5f4; --ramp-2: #6da7ec; --ramp-3: #3987e5;
+  --ramp-4: #2a78d6; --ramp-5: #1c5cab; --ramp-6: #104281; --ramp-7: #0d366b;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418; --surface: #181c21; --ink: #eef1f4; --ink-2: #b9c1cb; --ink-3: #8f99a5;
+    --rule: #2b323a; --sel: #f08454; --sel-fill: rgba(240, 132, 84, .18); --base: #b9c1cb;
+    --ramp-0: #1d3554; --ramp-1: #184f95; --ramp-2: #1c5cab; --ramp-3: #256abf;
+    --ramp-4: #3987e5; --ramp-5: #6da7ec; --ramp-6: #9ec5f4; --ramp-7: #cde2fb;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418; --surface: #181c21; --ink: #eef1f4; --ink-2: #b9c1cb; --ink-3: #8f99a5;
+  --rule: #2b323a; --sel: #f08454; --sel-fill: rgba(240, 132, 84, .18); --base: #b9c1cb;
+  --ramp-0: #1d3554; --ramp-1: #184f95; --ramp-2: #1c5cab; --ramp-3: #256abf;
+  --ramp-4: #3987e5; --ramp-5: #6da7ec; --ramp-6: #9ec5f4; --ramp-7: #cde2fb;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(30px, 4vw, 42px); line-height: 1; margin: 0; letter-spacing: .005em; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--ink-2); max-width: 62ch; }
+.eyebrow { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); padding: 3px; gap: 2px; }
+.seg button { font: inherit; font-size: 13.5px; font-weight: 500; border: 0; background: transparent; color: var(--ink-2); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.search { font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); width: 230px; max-width: 100%; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+.plate { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; position: relative; }
+#map { width: 100%; height: auto; display: block; cursor: grab; }
+#map:active { cursor: grabbing; }
+.zoom-ctl { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); overflow: hidden; z-index: 1; }
+.zoom-ctl button { font: inherit; font-size: 18px; line-height: 1; width: 34px; height: 34px; border: 0; background: transparent; color: var(--ink); cursor: pointer; display: grid; place-items: center; }
+.zoom-ctl button + button { border-top: 1px solid var(--rule); }
+.zoom-ctl button:hover:not(:disabled) { background: var(--bg); }
+.zoom-ctl button:disabled { color: var(--ink-3); opacity: .5; cursor: default; }
+.zoom-hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--surface); font-size: 12.5px; padding: 6px 10px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
+#map .area { stroke: var(--surface); stroke-width: .6; cursor: pointer; vector-effect: non-scaling-stroke; }
+#map .area:hover { stroke: var(--ink); stroke-width: 1.2; }
+#map .county-lines { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 1; pointer-events: none; vector-effect: non-scaling-stroke; }
+#map .selected { fill: none; stroke: var(--sel); stroke-width: 2.6; pointer-events: none; vector-effect: non-scaling-stroke; }
+
+.key { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
+.key svg { width: min(360px, 100%); height: auto; overflow: visible; }
+.key text { fill: var(--ink-2); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-3); }
+.chip { font: inherit; font-size: 12.5px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--ink-3); }
+
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px; line-height: 1.35; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); font-variant-numeric: tabular-nums; z-index: 2; }
+.tip b { font-weight: 600; }
+
+.detail { gap: 16px; }
+.place h2 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.05; margin: 2px 0 0; text-wrap: balance; }
+.place .sub { color: var(--ink-2); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.linkish { font: inherit; font-size: 13.5px; background: none; border: 0; padding: 0; color: var(--sel); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--rule); }
+.stat { padding: 10px 10px 10px 0; display: flex; flex-direction: column; gap: 2px; }
+.stat + .stat { padding-left: 12px; border-left: 1px solid var(--rule); }
+.stat .v { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat .d { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+@media (max-width: 460px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(3) { border-left: 0; padding-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--rule); } }
+
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.chart-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 16px; height: 0; border-top: 2px solid; display: inline-block; }
+.sw.sel { border-color: var(--sel); }
+.sw.base { border-color: var(--base); border-top-style: dashed; }
+.chart-box { position: relative; }
+#curve { width: 100%; height: auto; display: block; overflow: visible; }
+#curve text { fill: var(--ink-3); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+#curve .grid line { stroke: var(--rule); }
+#curve .axis-label { fill: var(--ink-2); }
+#curve .med-label { fill: var(--ink); font-weight: 600; }
+
+details { font-size: 13.5px; }
+summary { cursor: pointer; color: var(--ink-2); }
+.tbl-wrap { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; }
+th { font-weight: 600; color: var(--ink-2); }
+
+.note { font-size: 12.5px; color: var(--ink-3); max-width: 90ch; }
+.note p { margin: 0 0 4px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">ACS 2020–2024 · 5-year estimates</div>
+      <h1>Massachusetts Age Atlas</h1>
+      <p class="lede">Median age of residents in all 351 cities and towns. Click a place on the map to see its age distribution against the state as a whole.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Map level">
+        <button type="button" id="lvl-town" aria-pressed="true">Cities &amp; towns</button>
+        <button type="button" id="lvl-county" aria-pressed="false">Counties</button>
+      </div>
+      <input class="search" id="find" list="places" placeholder="Find a city or town…" aria-label="Find a city or town" autocomplete="off">
+      <datalist id="places"></datalist>
+    </div>
+  </header>
+
+  <div class="app">
+    <section class="plate" aria-label="Map of median age">
+      <svg id="map" viewBox="0 0 800 520" role="img" aria-label="Choropleth map of Massachusetts colored by median age"></svg>
+      <div class="tip" id="maptip" hidden></div>
+      <div class="zoom-ctl" role="group" aria-label="Map zoom">
+        <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <button type="button" id="zoom-reset" aria-label="Reset zoom" disabled>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+      <div class="zoom-hint" id="zoomhint" hidden>Hold Ctrl or ⌘ and scroll to zoom</div>
+      <div class="key">
+        <svg id="key" viewBox="0 0 360 44" aria-label="Color key: median age from 25 or younger to 60 or older"></svg>
+        <div class="quick" id="quick"></div>
+      </div>
+    </section>
+
+    <section class="plate detail" aria-live="polite">
+      <div class="place">
+        <div class="eyebrow" id="p-kind">City</div>
+        <h2 id="p-name">Boston</h2>
+        <div class="sub" id="p-sub"></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="eyebrow">Median age</span><span class="v" id="s-med">–</span><span class="d" id="s-med-d"></span></div>
+        <div class="stat"><span class="eyebrow">Population</span><span class="v" id="s-pop">–</span><span class="d">residents</span></div>
+        <div class="stat"><span class="eyebrow">Under 18</span><span class="v" id="s-kids">–</span><span class="d" id="s-kids-d"></span></div>
+        <div class="stat"><span class="eyebrow">65 and over</span><span class="v" id="s-old">–</span><span class="d" id="s-old-d"></span></div>
+      </div>
+      <div>
+        <div class="chart-head">
+          <h3>Age distribution</h3>
+          <div class="legend"><span><i class="sw sel"></i><span id="lg-name">Boston</span></span><span><i class="sw base"></i>Massachusetts</span></div>
+        </div>
+        <div class="chart-box">
+          <svg id="curve" viewBox="0 0 560 300" role="img" aria-label="Age distribution curve"></svg>
+          <div class="tip" id="curvetip" hidden></div>
+        </div>
+      </div>
+      <details>
+        <summary>Show as a table</summary>
+        <div class="tbl-wrap"><table id="tbl"></table></div>
+      </details>
+    </section>
+  </div>
+
+  <div class="note">
+    <p>Source: U.S. Census Bureau, American Community Survey 2020–2024 5-year estimates, tables B01001 (sex by age) and B01002 (median age), by county subdivision and county. Boundaries from the 2024 Census cartographic boundary files.</p>
+    <p>The curve shows each age bracket's share of residents, divided by the bracket's width in years, so brackets of different widths compare fairly. The 85+ bracket is drawn as ages 85–99. Small towns have wide margins of error, so single-year spikes there are often sampling noise.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const AGES = /*__AGES__*/null;
+const TOPO = /*__TOWNS__*/null;
+
+const BR = AGES.brackets;
+const AGE_MIN = 25, AGE_MAX = 60;
+const fmtInt = d3.format(",");
+const fmtPct = d3.format(".1f");
+
+// ---------- geography ----------
+const townObj = TOPO.objects.towns;
+const towns = topojson.feature(TOPO, townObj).features.map(f => ({
+  id: f.properties.GEOID, kind: "town", f,
+  name: f.properties.NAME,
+  type: /city$/.test(f.properties.NAMELSAD) ? "City" : "Town",
+  county: "25" + f.properties.COUNTYFP,
+  countyName: f.properties.NAMELSADCO,
+  data: AGES.towns[f.properties.GEOID],
+}));
+const counties = Array.from(d3.group(townObj.geometries, g => g.properties.COUNTYFP), ([fp, geoms]) => ({
+  id: "25" + fp, kind: "county",
+  name: geoms[0].properties.NAMELSADCO, type: "County",
+  f: { type: "Feature", properties: {}, geometry: topojson.merge(TOPO, geoms) },
+  data: AGES.counties["25" + fp],
+  towns: geoms.length,
+})).sort((a, b) => d3.ascending(a.name, b.name));
+const byId = new Map([...towns, ...counties].map(p => [p.id, p]));
+const countyLines = topojson.mesh(TOPO, townObj, (a, b) => a === b || a.properties.COUNTYFP !== b.properties.COUNTYFP);
+
+const W = 800;
+const allTowns = { type: "FeatureCollection", features: towns.map(t => t.f) };
+const projection = d3.geoConicConformal().parallels([41.72, 42.68]).rotate([71.5, 0]).fitWidth(W - 16, allTowns);
+const geoPath = d3.geoPath(projection);
+const [[, y0], [, y1]] = geoPath.bounds(allTowns);
+projection.translate(projection.translate().map((v, i) => v + (i ? 8 - y0 : 8)));
+const MH = Math.ceil(y1 - y0 + 16);
+document.getElementById("map").setAttribute("viewBox", `0 0 ${W} ${MH}`);
+
+// ---------- derived stats ----------
+function stats(d) {
+  const share = d.counts.map(c => c / d.pop);
+  const kids = d3.sum(share.slice(0, 4));       // 0–17
+  const old = d3.sum(share.slice(17));          // 65+
+  const density = BR.map(([a, b], i) => ({ a, b, mid: (a + b) / 2, share: share[i], y: share[i] / (b - a) * 100, count: d.counts[i] }));
+  return { kids, old, density };
+}
+const MA = { name: "Massachusetts", data: AGES.state, ...stats(AGES.state) };
+
+// ---------- color ----------
+let color;
+function buildColor() {
+  const cs = getComputedStyle(document.documentElement);
+  const ramp = d3.range(8).map(i => cs.getPropertyValue(`--ramp-${i}`).trim());
+  color = d3.scaleSequential(d3.interpolateRgbBasis(ramp)).domain([AGE_MIN, AGE_MAX]).clamp(true);
+}
+
+// ---------- state ----------
+let level = "town";
+let selected = byId.get("2502507000") || towns[0]; // Boston
+
+// ---------- map ----------
+const map = d3.select("#map");
+const gZoom = map.append("g");
+const gAreas = gZoom.append("g");
+const gLines = gZoom.append("path").attr("class", "county-lines");
+const gSel = gZoom.append("path").attr("class", "selected");
+const mapTip = document.getElementById("maptip");
+
+// ---------- zoom ----------
+// Mouse wheel zooms only with Ctrl/⌘ (trackpad pinch sends ctrlKey), so the page still scrolls.
+// On touch, one finger scrolls the page until the map is zoomed in; two fingers pinch.
+const zoomHint = document.getElementById("zoomhint");
+let hintTimer;
+const zoom = d3.zoom()
+  .scaleExtent([1, 14])
+  .translateExtent([[0, 0], [W, MH]])
+  .clickDistance(4)
+  .filter(ev => {
+    if (ev.type === "wheel") return ev.ctrlKey || ev.metaKey;
+    if (ev.type === "touchstart") return ev.touches.length > 1 || d3.zoomTransform(map.node()).k > 1;
+    return !ev.button;
+  })
+  .on("zoom", ev => {
+    gZoom.attr("transform", ev.transform);
+    mapTip.hidden = true;
+    map.style("touch-action", ev.transform.k > 1 ? "none" : "pan-x pan-y");
+    document.getElementById("zoom-reset").disabled = ev.transform.k === 1;
+  });
+map.call(zoom).style("touch-action", "pan-x pan-y");
+map.on("wheel.hint", ev => {
+  if (ev.ctrlKey || ev.metaKey) return;
+  zoomHint.hidden = false;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => { zoomHint.hidden = true; }, 1400);
+});
+function zoomTo(p) {
+  const [[x0, y0], [x1, y1]] = geoPath.bounds(p.f);
+  const k = Math.min(8, 0.35 / Math.max((x1 - x0) / W, (y1 - y0) / MH));
+  const t = d3.zoomIdentity.translate(W / 2, MH / 2).scale(Math.max(1, k)).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+  map.transition().duration(650).call(zoom.transform, t);
+}
+document.getElementById("zoom-in").addEventListener("click", () => map.transition().duration(300).call(zoom.scaleBy, 1.8));
+document.getElementById("zoom-out").addEventListener("click", () => map.transition().duration(300).call(zoom.scaleBy, 1 / 1.8));
+document.getElementById("zoom-reset").addEventListener("click", () => map.transition().duration(450).call(zoom.transform, d3.zoomIdentity));
+
+function drawMap() {
+  const items = level === "town" ? towns : counties;
+  gAreas.selectAll("path").data(items, d => d.id).join("path")
+    .attr("class", "area").attr("d", d => geoPath(d.f))
+    .attr("fill", d => color(d.data.median))
+    .on("pointermove", (ev, d) => showMapTip(ev, d))
+    .on("pointerleave", () => { mapTip.hidden = true; })
+    .on("click", (ev, d) => select(d));
+  gLines.attr("d", level === "town" ? geoPath(countyLines) : null);
+  drawSelectionOutline();
+}
+function drawSelectionOutline() {
+  gSel.attr("d", selected ? geoPath(selected.f) : null);
+}
+function showMapTip(ev, d) {
+  const box = ev.currentTarget.ownerSVGElement.parentNode.getBoundingClientRect();
+  mapTip.hidden = false;
+  mapTip.innerHTML = `<b>${d.name}</b> · median age ${d.data.median.toFixed(1)}`;
+  const x = Math.min(Math.max(ev.clientX - box.left, 90), box.width - 90);
+  mapTip.style.left = x + "px";
+  mapTip.style.top = (ev.clientY - box.top) + "px";
+}
+
+// ---------- key ----------
+function drawKey() {
+  const key = d3.select("#key"); key.selectAll("*").remove();
+  const x = d3.scaleLinear().domain([AGE_MIN, AGE_MAX]).range([6, 354]);
+  const grad = key.append("defs").append("linearGradient").attr("id", "kg");
+  d3.range(0, 1.0001, .1).forEach(t => grad.append("stop").attr("offset", t).attr("stop-color", color(AGE_MIN + t * (AGE_MAX - AGE_MIN))));
+  key.append("rect").attr("x", 6).attr("y", 14).attr("width", 348).attr("height", 10).attr("rx", 2).attr("fill", "url(#kg)");
+  key.append("text").attr("x", 6).attr("y", 9).text("Younger");
+  key.append("text").attr("x", 354).attr("y", 9).attr("text-anchor", "end").text("Older · median age");
+  [25, 30, 35, 40, 45, 50, 55, 60].forEach(v => {
+    key.append("text").attr("x", x(v)).attr("y", 38).attr("text-anchor", "middle").text(v === 25 ? "≤25" : v === 60 ? "60+" : v);
+  });
+}
+
+function drawQuick() {
+  const pool = level === "town" ? towns.filter(t => t.data.pop >= 1000) : counties;
+  const sorted = pool.slice().sort((a, b) => a.data.median - b.data.median);
+  const q = d3.select("#quick"); q.selectAll("*").remove();
+  q.append("span").text("Youngest");
+  sorted.slice(0, 2).forEach(p => q.append("button").attr("class", "chip").attr("type", "button").text(`${p.name} ${p.data.median.toFixed(1)}`).on("click", () => { select(p); zoomTo(p); }));
+  q.append("span").text("Oldest");
+  sorted.slice(-2).reverse().forEach(p => q.append("button").attr("class", "chip").attr("type", "button").text(`${p.name} ${p.data.median.toFixed(1)}`).on("click", () => { select(p); zoomTo(p); }));
+}
+
+// ---------- curve ----------
+const CW = 560, CH = 300, M = { t: 18, r: 14, b: 40, l: 44 };
+const curve = d3.select("#curve");
+const curveTip = document.getElementById("curvetip");
+const xS = d3.scaleLinear().domain([0, 95]).range([M.l, CW - M.r]);
+
+function drawCurve(p, s) {
+  curve.selectAll("*").remove();
+  const yMax = d3.max([...s.density, ...MA.density], d => d.y) * 1.08;
+  const yS = d3.scaleLinear().domain([0, yMax]).nice(4).range([CH - M.b, M.t]);
+  const line = d3.line().x(d => xS(d.mid)).y(d => yS(d.y)).curve(d3.curveMonotoneX);
+  const area = d3.area().x(d => xS(d.mid)).y0(yS(0)).y1(d => yS(d.y)).curve(d3.curveMonotoneX);
+
+  const grid = curve.append("g").attr("class", "grid");
+  yS.ticks(4).forEach(v => {
+    grid.append("line").attr("x1", M.l).attr("x2", CW - M.r).attr("y1", yS(v)).attr("y2", yS(v));
+    curve.append("text").attr("x", M.l - 8).attr("y", yS(v) + 4).attr("text-anchor", "end").text(v === 0 ? "0" : v.toFixed(1) + "%");
+  });
+  [0, 10, 20, 30, 40, 50, 60, 70, 80, 90].forEach(v => {
+    curve.append("text").attr("x", xS(v)).attr("y", CH - M.b + 16).attr("text-anchor", "middle").text(v);
+  });
+  curve.append("text").attr("class", "axis-label").attr("x", (M.l + CW - M.r) / 2).attr("y", CH - 6).attr("text-anchor", "middle").text("Age (years)");
+  curve.append("text").attr("class", "axis-label").attr("x", M.l).attr("y", 8).text("Share of residents per year of age");
+
+  curve.append("path").attr("d", area(s.density)).attr("fill", "var(--sel-fill)");
+  curve.append("path").attr("d", line(MA.density)).attr("fill", "none").attr("stroke", "var(--base)").attr("stroke-width", 1.5).attr("stroke-dasharray", "4 3");
+  curve.append("path").attr("d", line(s.density)).attr("fill", "none").attr("stroke", "var(--sel)").attr("stroke-width", 2).attr("stroke-linejoin", "round");
+
+  // median marker
+  const med = p.data.median;
+  if (med != null) {
+    curve.append("line").attr("x1", xS(med)).attr("x2", xS(med)).attr("y1", yS(0)).attr("y2", M.t + 12)
+      .attr("stroke", "var(--ink)").attr("stroke-width", 1).attr("stroke-dasharray", "1 3");
+    const right = xS(med) < CW - 110;
+    curve.append("text").attr("class", "med-label").attr("x", xS(med) + (right ? 5 : -5)).attr("y", M.t + 20)
+      .attr("text-anchor", right ? "start" : "end").text(`median ${med.toFixed(1)}`);
+  }
+
+  // hover layer
+  const hover = curve.append("g").style("pointer-events", "none").attr("opacity", 0);
+  const hl = hover.append("line").attr("y1", M.t).attr("y2", yS(0)).attr("stroke", "var(--ink-3)").attr("stroke-width", 1);
+  const dotSel = hover.append("circle").attr("r", 4.5).attr("fill", "var(--sel)").attr("stroke", "var(--surface)").attr("stroke-width", 2);
+  const dotBase = hover.append("circle").attr("r", 4).attr("fill", "var(--base)").attr("stroke", "var(--surface)").attr("stroke-width", 2);
+  const mids = s.density.map(d => d.mid);
+
+  curve.append("rect").attr("x", M.l).attr("y", M.t).attr("width", CW - M.l - M.r).attr("height", CH - M.t - M.b)
+    .attr("fill", "transparent")
+    .on("pointermove", ev => {
+      const [mx] = d3.pointer(ev);
+      const age = xS.invert(mx);
+      let i = d3.leastIndex(mids, m => Math.abs(m - age));
+      const d = s.density[i], b = MA.density[i];
+      hover.attr("opacity", 1);
+      hl.attr("x1", xS(d.mid)).attr("x2", xS(d.mid));
+      dotSel.attr("cx", xS(d.mid)).attr("cy", yS(d.y));
+      dotBase.attr("cx", xS(d.mid)).attr("cy", yS(b.y));
+      const label = d.a === 85 ? "85 and over" : d.b - d.a === 1 ? `Age ${d.a}` : `Ages ${d.a}–${d.b - 1}`;
+      curveTip.hidden = false;
+      curveTip.innerHTML = `<b>${label}</b><br>${p.name}: ${fmtPct(d.share * 100)}% · ${fmtInt(d.count)} people<br>Massachusetts: ${fmtPct(b.share * 100)}%`;
+      const box = curve.node().getBoundingClientRect();
+      const px = xS(d.mid) / CW * box.width;
+      curveTip.style.left = Math.min(Math.max(px, 95), box.width - 95) + "px";
+      curveTip.style.top = (Math.min(yS(d.y), yS(b.y)) / CH * box.height) + "px";
+    })
+    .on("pointerleave", () => { hover.attr("opacity", 0); curveTip.hidden = true; });
+}
+
+function drawTable(p, s) {
+  const rows = s.density.map((d, i) => {
+    const label = d.a === 85 ? "85+" : d.b - d.a === 1 ? `${d.a}` : `${d.a}–${d.b - 1}`;
+    return `<tr><td>${label}</td><td>${fmtInt(d.count)}</td><td>${fmtPct(d.share * 100)}%</td><td>${fmtPct(MA.density[i].share * 100)}%</td></tr>`;
+  }).join("");
+  document.getElementById("tbl").innerHTML = `<thead><tr><th>Ages</th><th>People</th><th>Share</th><th>MA share</th></tr></thead><tbody>${rows}</tbody>`;
+}
+
+// ---------- panel ----------
+function diff(v, base, unit) {
+  const dlt = v - base;
+  if (Math.abs(dlt) < 0.05) return `same as MA`;
+  return `${dlt > 0 ? "+" : "−"}${Math.abs(dlt).toFixed(1)}${unit} vs MA`;
+}
+function renderPanel() {
+  const p = selected, s = stats(p.data);
+  document.getElementById("p-kind").textContent = p.type;
+  document.getElementById("p-name").textContent = p.name;
+  document.getElementById("lg-name").textContent = p.name;
+  const sub = d3.select("#p-sub"); sub.selectAll("*").remove();
+  if (p.kind === "town") {
+    sub.append("span").text(p.countyName);
+    sub.append("button").attr("class", "linkish").attr("type", "button").text(`View ${p.countyName}`)
+      .on("click", () => { const c = byId.get(p.county); setLevel("county"); select(c); zoomTo(c); });
+  } else {
+    sub.append("span").text(`${p.towns} cities and towns`);
+  }
+  document.getElementById("s-med").textContent = p.data.median.toFixed(1);
+  document.getElementById("s-med-d").textContent = diff(p.data.median, MA.data.median, " yrs");
+  document.getElementById("s-pop").textContent = fmtInt(p.data.pop);
+  document.getElementById("s-kids").textContent = fmtPct(s.kids * 100) + "%";
+  document.getElementById("s-kids-d").textContent = diff(s.kids * 100, MA.kids * 100, " pts");
+  document.getElementById("s-old").textContent = fmtPct(s.old * 100) + "%";
+  document.getElementById("s-old-d").textContent = diff(s.old * 100, MA.old * 100, " pts");
+  drawCurve(p, s);
+  drawTable(p, s);
+}
+
+function select(p) {
+  if (!p) return;
+  selected = p;
+  drawSelectionOutline();
+  renderPanel();
+}
+
+function setLevel(l) {
+  if (l === level) return;
+  level = l;
+  document.getElementById("lvl-town").setAttribute("aria-pressed", l === "town");
+  document.getElementById("lvl-county").setAttribute("aria-pressed", l === "county");
+  if (l === "county" && selected.kind === "town") selected = byId.get(selected.county);
+  drawMap(); drawQuick(); renderPanel();
+}
+document.getElementById("lvl-town").addEventListener("click", () => setLevel("town"));
+document.getElementById("lvl-county").addEventListener("click", () => setLevel("county"));
+
+// ---------- search ----------
+const searchLabel = p => p.kind === "town" ? `${p.name} (${p.countyName.replace(" County", "")})` : p.name;
+const searchable = [...towns.slice().sort((a, b) => d3.ascending(a.name, b.name)), ...counties];
+const nameIndex = new Map(searchable.map(p => [searchLabel(p).toLowerCase(), p]));
+document.getElementById("places").innerHTML = searchable.map(p => `<option value="${searchLabel(p)}"></option>`).join("");
+const find = document.getElementById("find");
+function tryFind() {
+  const v = find.value.trim().toLowerCase();
+  if (!v) return;
+  let p = nameIndex.get(v) || towns.find(t => t.name.toLowerCase() === v) || counties.find(c => c.name.toLowerCase() === v || c.name.toLowerCase() === v + " county");
+  if (!p) return;
+  setLevel(p.kind);
+  select(p);
+  zoomTo(p);
+  find.value = "";
+  find.blur();
+}
+find.addEventListener("change", tryFind);
+find.addEventListener("keydown", e => { if (e.key === "Enter") tryFind(); });
+
+// ---------- theme ----------
+function repaint() { buildColor(); drawMap(); drawKey(); }
+new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", repaint);
+
+buildColor(); drawMap(); drawKey(); drawQuick(); renderPanel();
+</script>
