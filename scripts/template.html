@@ -63,12 +63,13 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outli
 .plate { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; position: relative; }
 #map { width: 100%; height: auto; display: block; cursor: grab; }
 #map:active { cursor: grabbing; }
-.zoom-ctl { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); overflow: hidden; z-index: 1; }
+.map-wrap { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.zoom-ctl { position: absolute; top: 0; right: 0; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); overflow: hidden; z-index: 1; }
 .zoom-ctl button { font: inherit; font-size: 18px; line-height: 1; width: 34px; height: 34px; border: 0; background: transparent; color: var(--ink); cursor: pointer; display: grid; place-items: center; }
 .zoom-ctl button + button { border-top: 1px solid var(--rule); }
 .zoom-ctl button:hover:not(:disabled) { background: var(--bg); }
 .zoom-ctl button:disabled { color: var(--ink-3); opacity: .5; cursor: default; }
-.zoom-hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--surface); font-size: 12.5px; padding: 6px 10px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
+.zoom-hint { position: absolute; top: 0; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--surface); font-size: 12.5px; padding: 6px 10px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
 #map .area { stroke: var(--surface); stroke-width: .6; cursor: pointer; vector-effect: non-scaling-stroke; }
 #map .area:hover { stroke: var(--ink); stroke-width: 1.2; }
 #map .county-lines { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 1; pointer-events: none; vector-effect: non-scaling-stroke; }
@@ -77,12 +78,43 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outli
 .key { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
 .key svg { width: min(360px, 100%); height: auto; overflow: visible; }
 .key text { fill: var(--ink-2); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
-.quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-3); }
+.quick { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--ink-3); }
+.quick .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* Selected-place bar: only shown when the detail panel sits below the map. */
+.pick { display: none; font: inherit; text-align: left; width: 100%; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.pick-sw { width: 14px; height: 14px; border-radius: 3px; flex: none; outline: 2px solid var(--sel); outline-offset: 1px; }
+.pick-txt { flex: 1; min-width: 0; font-size: 14px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-txt span { color: var(--ink-2); }
+.pick-go { flex: none; font-size: 13px; font-weight: 600; color: var(--sel); }
+
+@media (max-width: 900px) {
+  .pick { display: flex; }
+}
+@media (max-width: 600px) {
+  body { padding-block: 20px 32px; }
+  .controls { width: 100%; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; padding: 9px 12px; }
+  .search { width: 100%; font-size: 16px; padding: 10px 12px; }
+  .plate { padding: 12px; }
+  .zoom-ctl { position: static; flex-direction: row; align-self: flex-end; order: 2; }
+  .zoom-ctl button { width: 44px; height: 40px; }
+  .zoom-ctl button + button { border-top: 0; border-left: 1px solid var(--rule); }
+  .zoom-hint { display: none; }
+  .key { flex-direction: column; align-items: stretch; }
+  .key svg { width: 100%; }
+  .chip { padding: 6px 12px; font-size: 13px; }
+  .place h2 { font-size: 28px; }
+  .stat .v { font-size: 24px; }
+  .legend { gap: 10px; font-size: 12px; }
+}
 .chip { font: inherit; font-size: 12.5px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .chip:hover { border-color: var(--ink-3); }
 
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px; line-height: 1.35; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); font-variant-numeric: tabular-nums; z-index: 2; }
 .tip b { font-weight: 600; }
+.tip.below { transform: translate(-50%, 14px); }
 
 .detail { gap: 16px; }
 .place h2 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.05; margin: 2px 0 0; text-wrap: balance; }
@@ -104,7 +136,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outli
 .sw.sel { border-color: var(--sel); }
 .sw.base { border-color: var(--base); border-top-style: dashed; }
 .chart-box { position: relative; }
-#curve { width: 100%; height: auto; display: block; overflow: visible; }
+#curve { width: 100%; height: auto; display: block; overflow: visible; touch-action: pan-y; }
 #curve text { fill: var(--ink-3); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
 #curve .grid line { stroke: var(--rule); }
 #curve .axis-label { fill: var(--ink-2); }
@@ -141,6 +173,7 @@ th { font-weight: 600; color: var(--ink-2); }
 
   <div class="app">
     <section class="plate" aria-label="Map of median age">
+      <div class="map-wrap">
       <svg id="map" viewBox="0 0 800 520" role="img" aria-label="Choropleth map of Massachusetts colored by median age"></svg>
       <div class="tip" id="maptip" hidden></div>
       <div class="zoom-ctl" role="group" aria-label="Map zoom">
@@ -151,13 +184,19 @@ th { font-weight: 600; color: var(--ink-2); }
         </button>
       </div>
       <div class="zoom-hint" id="zoomhint" hidden>Hold Ctrl or ⌘ and scroll to zoom</div>
+      </div>
+      <button type="button" class="pick" id="pick" aria-label="Jump to the age curve for the selected place">
+        <span class="pick-sw" id="pick-sw"></span>
+        <span class="pick-txt"><b id="pick-name">Boston</b> <span id="pick-med">median age 33.3</span></span>
+        <span class="pick-go">Age curve ↓</span>
+      </button>
       <div class="key">
         <svg id="key" viewBox="0 0 360 44" aria-label="Color key: median age from 25 or younger to 60 or older"></svg>
         <div class="quick" id="quick"></div>
       </div>
     </section>
 
-    <section class="plate detail" aria-live="polite">
+    <section class="plate detail" id="detail" aria-live="polite">
       <div class="place">
         <div class="eyebrow" id="p-kind">City</div>
         <h2 id="p-name">Boston</h2>
@@ -314,6 +353,7 @@ function drawSelectionOutline() {
   gSel.attr("d", selected ? geoPath(selected.f) : null);
 }
 function showMapTip(ev, d) {
+  if (ev.pointerType === "touch") return; // on touch, the selected-place bar does this job
   const box = ev.currentTarget.ownerSVGElement.parentNode.getBoundingClientRect();
   mapTip.hidden = false;
   mapTip.innerHTML = `<b>${d.name}</b> · median age ${d.data.median.toFixed(1)}`;
@@ -340,19 +380,26 @@ function drawQuick() {
   const pool = level === "town" ? towns.filter(t => t.data.pop >= 1000) : counties;
   const sorted = pool.slice().sort((a, b) => a.data.median - b.data.median);
   const q = d3.select("#quick"); q.selectAll("*").remove();
-  q.append("span").text("Youngest");
-  sorted.slice(0, 2).forEach(p => q.append("button").attr("class", "chip").attr("type", "button").text(`${p.name} ${p.data.median.toFixed(1)}`).on("click", () => { select(p); zoomTo(p); }));
-  q.append("span").text("Oldest");
-  sorted.slice(-2).reverse().forEach(p => q.append("button").attr("class", "chip").attr("type", "button").text(`${p.name} ${p.data.median.toFixed(1)}`).on("click", () => { select(p); zoomTo(p); }));
+  [["Youngest", sorted.slice(0, 2)], ["Oldest", sorted.slice(-2).reverse()]].forEach(([label, places]) => {
+    const g = q.append("div").attr("class", "grp");
+    g.append("span").text(label);
+    places.forEach(p => g.append("button").attr("class", "chip").attr("type", "button").text(`${p.name} ${p.data.median.toFixed(1)}`).on("click", () => { select(p); zoomTo(p); }));
+  });
 }
 
 // ---------- curve ----------
-const CW = 560, CH = 300, M = { t: 18, r: 14, b: 40, l: 44 };
+// The chart is drawn at its on-screen width so its text stays at real pixel sizes on phones.
+const M = { t: 18, r: 14, b: 40, l: 44 };
 const curve = d3.select("#curve");
+const curveBox = document.querySelector(".chart-box");
 const curveTip = document.getElementById("curvetip");
-const xS = d3.scaleLinear().domain([0, 95]).range([M.l, CW - M.r]);
+let CW = 560, CH = 300, xS;
 
 function drawCurve(p, s) {
+  CW = Math.max(280, Math.round(curveBox.clientWidth || 560));
+  CH = Math.round(Math.min(300, Math.max(230, CW * 0.6)));
+  curve.attr("viewBox", `0 0 ${CW} ${CH}`);
+  xS = d3.scaleLinear().domain([0, 95]).range([M.l, CW - M.r]);
   curve.selectAll("*").remove();
   const yMax = d3.max([...s.density, ...MA.density], d => d.y) * 1.08;
   const yS = d3.scaleLinear().domain([0, yMax]).nice(4).range([CH - M.b, M.t]);
@@ -393,7 +440,7 @@ function drawCurve(p, s) {
 
   curve.append("rect").attr("x", M.l).attr("y", M.t).attr("width", CW - M.l - M.r).attr("height", CH - M.t - M.b)
     .attr("fill", "transparent")
-    .on("pointermove", ev => {
+    .on("pointerdown pointermove", ev => {
       const [mx] = d3.pointer(ev);
       const age = xS.invert(mx);
       let i = d3.leastIndex(mids, m => Math.abs(m - age));
@@ -408,10 +455,19 @@ function drawCurve(p, s) {
       const box = curve.node().getBoundingClientRect();
       const px = xS(d.mid) / CW * box.width;
       curveTip.style.left = Math.min(Math.max(px, 95), box.width - 95) + "px";
-      curveTip.style.top = (Math.min(yS(d.y), yS(b.y)) / CH * box.height) + "px";
+      // Flip the tooltip below the point when it would cover the chart's title and legend.
+      const topY = Math.min(yS(d.y), yS(b.y)) / CH * box.height;
+      const flip = topY < 80;
+      curveTip.classList.toggle("below", flip);
+      curveTip.style.top = (flip ? Math.max(yS(d.y), yS(b.y)) / CH * box.height : topY) + "px";
     })
-    .on("pointerleave", () => { hover.attr("opacity", 0); curveTip.hidden = true; });
+    .on("pointerleave", ev => { if (ev.pointerType === "touch") return; hover.attr("opacity", 0); curveTip.hidden = true; });
 }
+let lastCurveWidth = 0;
+new ResizeObserver(() => {
+  const w = Math.round(curveBox.clientWidth);
+  if (w && w !== lastCurveWidth) { lastCurveWidth = w; curveTip.hidden = true; drawCurve(selected, stats(selected.data)); }
+}).observe(curveBox);
 
 function drawTable(p, s) {
   const rows = s.density.map((d, i) => {
@@ -447,9 +503,17 @@ function renderPanel() {
   document.getElementById("s-kids-d").textContent = diff(s.kids * 100, MA.kids * 100, " pts");
   document.getElementById("s-old").textContent = fmtPct(s.old * 100) + "%";
   document.getElementById("s-old-d").textContent = diff(s.old * 100, MA.old * 100, " pts");
+  document.getElementById("pick-name").textContent = p.name;
+  document.getElementById("pick-med").textContent = `median ${p.data.median.toFixed(1)}`;
+  document.getElementById("pick-sw").style.background = color(p.data.median);
+  curveTip.hidden = true;
   drawCurve(p, s);
   drawTable(p, s);
 }
+document.getElementById("pick").addEventListener("click", () => {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("detail").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+});
 
 function select(p) {
   if (!p) return;
@@ -490,7 +554,7 @@ find.addEventListener("change", tryFind);
 find.addEventListener("keydown", e => { if (e.key === "Enter") tryFind(); });
 
 // ---------- theme ----------
-function repaint() { buildColor(); drawMap(); drawKey(); }
+function repaint() { buildColor(); drawMap(); drawKey(); renderPanel(); }
 new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", repaint);
 
